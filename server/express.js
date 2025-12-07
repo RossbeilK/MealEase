@@ -8,6 +8,9 @@ import restaurantRoutes from "./routes/restaurant.routes.js";
 import menuItemRoutes from "./routes/menuItem.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import userRoutes from "./routes/user.routes.js"; // NEW
+import uploadRoutes from "./routes/upload.routes.js"; // NEW
+import imageRoutes from "./routes/image.routes.js";         // NEW
+
 
 const app = express();
 
@@ -22,5 +25,7 @@ app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/menuitems", menuItemRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/users", userRoutes); // NEW
+app.use("/api/upload", uploadRoutes); // NEW
+app.use("/api/images", imageRoutes); // NEW 
 
 export default app;
