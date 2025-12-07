@@ -1,0 +1,37 @@
+name: CI Test Runner
+
+# 1. When should this run?
+on:
+  push:
+    branches: [ "main" ] # Runs when you push code to main
+  pull_request:
+    branches: [ "main" ] # Runs when someone tries to merge code into main
+
+# 2. What jobs should it do?
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # It creates a virtual machine using Linux
+
+    strategy:
+      matrix:
+        node-version: [18.x] # Use Node version 18 (or match your local version)
+
+    steps:
+    # Step A: Download your code onto the virtual machine
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step B: Install Node.js on the virtual machine
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    # Step C: Install dependencies (simulates 'npm install')
+    - name: Install Dependencies
+      run: npm ci
+
+    # Step D: Run the tests!
+    - name: Run Tests
+      run: npm test
