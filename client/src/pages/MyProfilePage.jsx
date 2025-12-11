@@ -7,7 +7,7 @@ const MyProfilePage = () => {
     name: "",
     email: "",
     address: "",
-    phone: ""
+    phone: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,7 +23,7 @@ const MyProfilePage = () => {
           name: res.data.name || "",
           email: res.data.email || "",
           address: res.data.address || "",
-          phone: res.data.phone || ""
+          phone: res.data.phone || "",
         });
       } catch (err) {
         console.error(err);
@@ -51,8 +51,7 @@ const MyProfilePage = () => {
       const payload = {
         name: form.name,
         address: form.address,
-        phone: form.phone
-        // you can add password update here if you want
+        phone: form.phone,
       };
 
       const res = await api.put("/auth/me", payload);
@@ -65,11 +64,11 @@ const MyProfilePage = () => {
           ...oldUser,
           name: res.data.name,
           email: res.data.email,
-          role: res.data.role || oldUser.role
+          role: res.data.role || oldUser.role,
         };
         window.localStorage.setItem("user", JSON.stringify(updatedUser));
       } catch {
-        // ignore
+        // ignore parse errors
       }
 
       setSuccess("Profile updated successfully.");
@@ -122,8 +121,6 @@ const MyProfilePage = () => {
             <label className="form-label">Phone</label>
             <input name="phone" value={form.phone} onChange={handleChange} />
           </div>
-
-          {/* Optional: add password change fields if required by your team */}
 
           {error && <div className="error-text">{error}</div>}
           {success && <div className="success-text">{success}</div>}

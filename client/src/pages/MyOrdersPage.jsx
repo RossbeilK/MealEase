@@ -37,18 +37,6 @@ const MyOrdersPage = () => {
   if (!orders.length) {
     return <div className="card">You have no orders yet.</div>;
   }
-  
-   const cancelOrder = async (orderId) => {
-    try {
-      await api.patch(`/api/orders/${orderId}`, { status: "cancelled" });
-      // Refresh the orders list
-      const res = await api.get("/api/orders/my");
-      setOrders(res.data);
-    } catch (err) {
-      console.error("Failed to cancel order", err);
-      setError("Failed to cancel order");
-    }
-  };
 
   return (
     <div className="card">
@@ -80,15 +68,6 @@ const MyOrdersPage = () => {
             <div style={{ color: "#777" }}>
               {new Date(order.createdAt).toLocaleString()}
             </div>
-             {order.status === "pending" && (
-            <button 
-              onClick={() => cancelOrder(order._id)}
-              className="button button-outline"
-              style={{ marginTop: "0.5rem" }}
-            >
-              Cancel Order
-            </button>
-          )}
           </div>
         ))}
       </div>

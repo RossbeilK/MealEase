@@ -1,239 +1,697 @@
 // src/pages/ManageRestaurantsPage.jsx
 import React, { useEffect, useState } from "react";
-import api from "../api";
+import { useNavigate } from "react-router-dom";
+import api, { API_BASE_URL } from "../api";
 
-const emptyForm = {
+// 用于重置餐厅表单
+const resolveImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
+};
+
+const emptyRestaurantForm = {
   name: "",
   address: "",
+  phone: "",
   cuisineType: "",
-  isOpen: true
+  imageUrl: "",
+  isOpen: true,
+};
+
+// 用于重置菜单表单
+const emptyMenuForm = {
+  name: "",
+  description: "",
+  price: "",
+  imageUrl: "",
+  isAvailable: true,
 };
 
 const ManageRestaurantsPage = () => {
+  const navigate = useNavigate();
+  const user = JSON.parse(window.localStorage.getItem("user") || "null");
+
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editingId, setEditingId] = useState(null); // null | "new" | restaurantId
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
 
-  let user = null;
-  try {
-    const stored = window.localStorage.getItem("user");
-    user = stored ? JSON.parse(stored) : null;
-  } catch {
-    user = null;
-  }
+  // 餐厅 CRUD 状态
+  const [restaurantForm, setRestaurantForm] = useState(emptyRestaurantForm);
+  const [editingRestaurantId, setEditingRestaurantId] = useState(null);
+  const [savingRestaurant, setSavingRestaurant] = useState(false);
 
-  const isAdmin = user?.role === "admin";
+  // 菜单 CRUD 状态（针对选中的餐厅）
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuForm, setMenuForm] = useState(emptyMenuForm);
+  const [editingMenuId, setEditingMenuId] = useState(null);
+  const [savingMenu, setSavingMenu] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
+    // 不是 admin 直接回到首页
+    if (!user || user.role !== "admin") {
+      navigate("/");
+      return;
+    }
+
     const loadRestaurants = async () => {
       try {
+        setLoading(true);
         const res = await api.get("/api/restaurants");
-        setRestaurants(res.data || []);
+        const data = res.data || [];
+        setRestaurants(data);
+        if (data.length > 0) {
+          setSelectedRestaurantId(data[0]._id);
+        }
       } catch (err) {
         console.error(err);
-        setError(err.response?.data?.message || "Failed to load restaurants.");
+        setError("Failed to load restaurants.");
       } finally {
         setLoading(false);
       }
     };
 
     loadRestaurants();
-  }, []);
+  }, [navigate]);
 
-  const startCreate = () => {
-    setEditingId("new");
-    setForm(emptyForm);
-  };
+  // 当选中的餐厅变化时，加载对应菜单
+  useEffect(() => {
+    const loadMenu = async () => {
+      if (!selectedRestaurantId) {
+        setMenuItems([]);
+        return;
+      }
+      try {
+        const res = await api.get(
+          `/api/menuitems/restaurant/${selectedRestaurantId}`
+        );
+        setMenuItems(res.data || []);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load menu items.");
+      }
+    };
 
-  const startEdit = (restaurant) => {
-    setEditingId(restaurant._id);
-    setForm({
-      name: restaurant.name || "",
-      address: restaurant.address || "",
-      cuisineType: restaurant.cuisineType || "",
-      isOpen: restaurant.isOpen !== undefined ? restaurant.isOpen : true
-    });
-  };
+    loadMenu();
+  }, [selectedRestaurantId]);
 
-  const cancelEdit = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setError("");
-  };
-
-  const handleChange = (e) => {
+  // ---------- 餐厅 CRUD ----------
+  const handleRestaurantFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
+    setRestaurantForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleEditRestaurant = (restaurant) => {
+    setEditingRestaurantId(restaurant._id);
+    setRestaurantForm({
+      name: restaurant.name || "",
+      address: restaurant.address || "",
+      phone: restaurant.phone || "",
+      cuisineType: restaurant.cuisineType || "",
+      imageUrl: restaurant.imageUrl || "",
+      isOpen: restaurant.isOpen ?? true,
+    });
+  };
+
+  const handleCancelRestaurantEdit = () => {
+    setEditingRestaurantId(null);
+    setRestaurantForm(emptyRestaurantForm);
+  };
+
+  const handleSaveRestaurant = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    setSavingRestaurant(true);
+    setError("");
+
+    const payload = {
+      name: restaurantForm.name.trim(),
+      address: restaurantForm.address.trim(),
+      phone: restaurantForm.phone.trim(),
+      cuisineType: restaurantForm.cuisineType.trim(),
+      imageUrl: restaurantForm.imageUrl.trim(),
+      isOpen: restaurantForm.isOpen,
+    };
+
+    if (!payload.name || !payload.address) {
+      setError("Please enter restaurant name and address.");
+      setSavingRestaurant(false);
+      return;
+    }
+
+    try {
+      if (editingRestaurantId) {
+        await api.put(`/api/restaurants/${editingRestaurantId}`, payload);
+      } else {
+        await api.post("/api/restaurants", payload);
+      }
+
+      const res = await api.get("/api/restaurants");
+      const data = res.data || [];
+      setRestaurants(data);
+
+      if (!selectedRestaurantId && data.length > 0) {
+        setSelectedRestaurantId(data[0]._id);
+      }
+
+      setRestaurantForm(emptyRestaurantForm);
+      setEditingRestaurantId(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save restaurant.");
+    } finally {
+      setSavingRestaurant(false);
+    }
+  };
+
+  const handleDeleteRestaurant = async (id) => {
+    if (!window.confirm("Delete this restaurant?")) return;
+    try {
+      await api.delete(`/api/restaurants/${id}`);
+      const filtered = restaurants.filter((r) => r._id !== id);
+      setRestaurants(filtered);
+
+      if (selectedRestaurantId === id) {
+        setSelectedRestaurantId(filtered[0]?._id || "");
+        setMenuItems([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete restaurant.");
+    }
+  };
+
+  const handleRestaurantSelectChange = (e) => {
+    setSelectedRestaurantId(e.target.value);
+    setEditingMenuId(null);
+    setMenuForm(emptyMenuForm);
+  };
+
+  // ---------- 菜单 CRUD ----------
+  const handleMenuFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setMenuForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleEditMenuItem = (item) => {
+    setEditingMenuId(item._id);
+    setMenuForm({
+      name: item.name || "",
+      description: item.description || "",
+      price: item.price != null ? String(item.price) : "",
+      imageUrl: item.imageUrl || "",
+      isAvailable: item.isAvailable ?? true,
+    });
+  };
+
+  const handleCancelMenuEdit = () => {
+    setEditingMenuId(null);
+    setMenuForm(emptyMenuForm);
+  };
+
+  const handleSaveMenuItem = async (e) => {
+    e.preventDefault();
+    if (!selectedRestaurantId) {
+      setError("Please select a restaurant first.");
+      return;
+    }
+    setSavingMenu(true);
+    setError("");
+
+    const payload = {
+      restaurant: selectedRestaurantId,
+      name: menuForm.name.trim(),
+      description: menuForm.description.trim(),
+      price: Number(menuForm.price),
+      imageUrl: menuForm.imageUrl.trim(),
+      isAvailable: menuForm.isAvailable,
+    };
+
+    if (!payload.name || Number.isNaN(payload.price)) {
+      setError("Please enter a valid name and price for the menu item.");
+      setSavingMenu(false);
+      return;
+    }
+
+    try {
+      if (editingMenuId) {
+        await api.put(`/api/menuitems/${editingMenuId}`, payload);
+      } else {
+        await api.post("/api/menuitems", payload);
+      }
+
+      const res = await api.get(
+        `/api/menuitems/restaurant/${selectedRestaurantId}`
+      );
+      setMenuItems(res.data || []);
+      setMenuForm(emptyMenuForm);
+      setEditingMenuId(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save menu item.");
+    } finally {
+      setSavingMenu(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async (id) => {
+    if (!window.confirm("Delete this menu item?")) return;
+    try {
+      await api.delete(`/api/menuitems/${id}`);
+      setMenuItems((prev) => prev.filter((item) => item._id !== id));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete menu item.");
+    }
+  };
+
+  // ---------- 图片上传（本地文件 -> /api/upload） ----------
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
     setError("");
 
     try {
-      if (editingId === "new") {
-        const res = await api.post("/api/restaurants", form);
-        setRestaurants((prev) => [res.data, ...prev]);
-      } else {
-        const res = await api.put(`/api/restaurants/${editingId}`, form);
-        setRestaurants((prev) =>
-          prev.map((r) => (r._id === editingId ? res.data : r))
-        );
-      }
-      cancelEdit();
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await api.post("/api/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const { imageUrl } = res.data;
+      setMenuForm((prev) => ({ ...prev, imageUrl }));
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || "Failed to save restaurant.");
+      setError("Failed to upload image.");
     } finally {
-      setSaving(false);
+      setUploadingImage(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this restaurant?")) return;
-
-    try {
-      await api.delete(`/api/restaurants/${id}`);
-      setRestaurants((prev) => prev.filter((r) => r._id !== id));
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to delete restaurant.");
-    }
-  };
-
-  if (!isAdmin) {
-    return <div>Access denied. Admins only.</div>;
-  }
-
-  if (loading) {
-    return <div>Loading restaurants...</div>;
+  if (!user || user.role !== "admin") {
+    return null;
   }
 
   return (
-    <div>
-      <h1 className="page-title">Manage Restaurants</h1>
-      <p className="page-subtitle">
-        Create, update, and delete restaurants available on MealEase.
-      </p>
-
-      <div style={{ marginBottom: "1rem" }}>
-        <button className="button button-primary" onClick={startCreate}>
-          + Add Restaurant
-        </button>
-      </div>
-
-      {error && <div className="error-text">{error}</div>}
-
-      {editingId && (
-        <div className="card" style={{ marginBottom: "1.5rem" }}>
-          <h2>{editingId === "new" ? "Create Restaurant" : "Edit Restaurant"}</h2>
-          <form onSubmit={handleSubmit} className="form">
-            <div className="form-group">
-              <label className="form-label">Name</label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Address</label>
-              <input
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Cuisine Type</label>
-              <input
-                name="cuisineType"
-                value={form.cuisineType}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <input
-                  type="checkbox"
-                  name="isOpen"
-                  checked={form.isOpen}
-                  onChange={handleChange}
-                  style={{ marginRight: "0.5rem" }}
-                />
-                Is Open
-              </label>
-            </div>
-
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                type="submit"
-                className="button button-primary"
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-              <button
-                type="button"
-                className="button button-outline"
-                onClick={cancelEdit}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+    <div className="card" style={{ margin: "1rem auto" }}>
+      <h1 className="page-title">Manage Restaurants &amp; Menus</h1>
+      {error && (
+        <div className="error-text" style={{ marginBottom: "0.75rem" }}>
+          {error}
         </div>
       )}
 
-      <div className="card">
-        <h2>Current Restaurants</h2>
-        {restaurants.length === 0 ? (
-          <p>No restaurants yet.</p>
-        ) : (
-          <div className="grid">
-            {restaurants.map((r) => (
-              <div key={r._id} className="restaurant-card">
-                <div className="restaurant-card-name">{r.name}</div>
-                <div className="restaurant-card-meta">
-                  {r.cuisineType || "Food"} · {r.address}
-                </div>
-                <div className="badge">
-                  {r.isOpen ? "Open" : "Closed"}
-                </div>
-                <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
-                  <button
-                    className="button button-small"
-                    type="button"
-                    onClick={() => startEdit(r)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="button button-outline button-small"
-                    type="button"
-                    onClick={() => handleDelete(r._id)}
-                  >
-                    Delete
-                  </button>
-                </div>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <div className="admin-layout">
+          {/* 左边：餐厅 CRUD */}
+          <section className="admin-panel">
+            <h2>Restaurants</h2>
+
+            <form onSubmit={handleSaveRestaurant}>
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input
+                  name="name"
+                  value={restaurantForm.name}
+                  onChange={handleRestaurantFormChange}
+                  required
+                />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <input
+                  name="address"
+                  value={restaurantForm.address}
+                  onChange={handleRestaurantFormChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone</label>
+                <input
+                  name="phone"
+                  value={restaurantForm.phone}
+                  onChange={handleRestaurantFormChange}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Cuisine type</label>
+                <input
+                  name="cuisineType"
+                  value={restaurantForm.cuisineType}
+                  onChange={handleRestaurantFormChange}
+                  placeholder="Chinese, Pizza, Coffee..."
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Image URL (optional)</label>
+                <input
+                  name="imageUrl"
+                  value={restaurantForm.imageUrl}
+                  onChange={handleRestaurantFormChange}
+                  placeholder="https://example.com/restaurant.jpg"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Upload image from computer</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleRestaurantImageUpload}
+                />
+                {uploadingImage && (
+                  <p style={{ fontSize: "0.8rem" }}>Uploading image...</p>
+                )}
+                {restaurantForm.imageUrl && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <span
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "#666",
+                        marginRight: "0.5rem",
+                      }}
+                    >
+                      Preview:
+                    </span>
+                    <img
+                      src={resolveImageUrl(restaurantForm.imageUrl)}
+                      alt="preview"
+                      style={{
+                        width: 120,
+                        height: 80,
+                        objectFit: "cover",
+                        borderRadius: "0.75rem",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div
+                className="form-group"
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <input
+                  id="rest-isOpen"
+                  type="checkbox"
+                  name="isOpen"
+                  checked={restaurantForm.isOpen}
+                  onChange={handleRestaurantFormChange}
+                />
+                <label
+                  htmlFor="rest-isOpen"
+                  className="form-label"
+                  style={{ margin: 0 }}
+                >
+                  Open
+                </label>
+              </div>
+
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+              <button
+                type="submit"
+                className="button button-primary"
+                disabled={savingRestaurant}
+              >
+                {editingRestaurantId ? "Update restaurant" : "Add restaurant"}
+              </button>
+              {editingRestaurantId && (
+                <button
+                  type="button"
+                  className="button button-outline"
+                  onClick={handleCancelRestaurantEdit}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+            </form>
+
+            <h3 style={{ marginTop: "1rem" }}>Existing restaurants</h3>
+            {restaurants.length === 0 ? (
+              <p>No restaurants yet.</p>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Cuisine</th>
+                    <th>Open</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {restaurants.map((r) => (
+                    <tr key={r._id}>
+                      <td>{r.name}</td>
+                      <td>{r.cuisineType || "-"}</td>
+                      <td>{r.isOpen ? "Yes" : "No"}</td>
+                      <td>
+                        <div className="data-table-actions">
+                          <button
+                            type="button"
+                            className="button button-outline"
+                            onClick={() => handleEditRestaurant(r)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-outline"
+                            onClick={() => handleDeleteRestaurant(r._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          {/* 右边：菜单 CRUD */}
+          <section className="admin-panel">
+            <h2>Menu for selected restaurant</h2>
+
+            <div className="form-group">
+              <label className="form-label">Select restaurant</label>
+              <select
+                value={selectedRestaurantId}
+                onChange={handleRestaurantSelectChange}
+              >
+                {restaurants.map((r) => (
+                  <option key={r._id} value={r._id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <form onSubmit={handleSaveMenuItem}>
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input
+                  name="name"
+                  value={menuForm.name}
+                  onChange={handleMenuFormChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea
+                  name="description"
+                  value={menuForm.description}
+                  onChange={handleMenuFormChange}
+                  rows={2}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Price</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  value={menuForm.price}
+                  onChange={handleMenuFormChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Image URL (optional, will override uploaded)
+                </label>
+                <input
+                  name="imageUrl"
+                  value={menuForm.imageUrl}
+                  onChange={handleMenuFormChange}
+                  placeholder="/uploads/xxx.jpg or https://..."
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Upload image from computer</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                {uploadingImage && (
+                  <p style={{ fontSize: "0.8rem" }}>Uploading image...</p>
+                )}
+                {menuForm.imageUrl && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <span
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "#666",
+                        marginRight: "0.5rem",
+                      }}
+                    >
+                      Preview:
+                    </span>
+                    <img
+                      src={resolveImageUrl(menuForm.imageUrl)}
+                      alt="preview"
+                      style={{
+                        width: 80,
+                        height: 80,
+                        objectFit: "cover",
+                        borderRadius: "0.75rem",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div
+                className="form-group"
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <input
+                  id="menu-isAvailable"
+                  type="checkbox"
+                  name="isAvailable"
+                  checked={menuForm.isAvailable}
+                  onChange={handleMenuFormChange}
+                />
+                <label
+                  htmlFor="menu-isAvailable"
+                  className="form-label"
+                  style={{ margin: 0 }}
+                >
+                  Available
+                </label>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button
+                  type="submit"
+                  className="button button-primary"
+                  disabled={savingMenu}
+                >
+                  {editingMenuId ? "Update item" : "Add item"}
+                </button>
+                {editingMenuId && (
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    onClick={handleCancelMenuEdit}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <h3 style={{ marginTop: "1rem" }}>Existing menu items</h3>
+            {menuItems.length === 0 ? (
+              <p>No menu items for this restaurant yet.</p>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Available</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {menuItems.map((item) => (
+                    <tr key={item._id}>
+                      <td>
+                        {item.name}
+                        {item.imageUrl && (
+                          <div className="badge-muted">Has image</div>
+                        )}
+                      </td>
+                      <td>${item.price?.toFixed(2)}</td>
+                      <td>{item.isAvailable ? "Yes" : "No"}</td>
+                      <td>
+                        <div className="data-table-actions">
+                          <button
+                            type="button"
+                            className="button button-outline"
+                            onClick={() => handleEditMenuItem(item)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-outline"
+                            onClick={() => handleDeleteMenuItem(item._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 };
+  const handleRestaurantImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await api.post("/api/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const { imageUrl } = res.data;
+      setRestaurantForm((prev) => ({ ...prev, imageUrl }));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to upload image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
 
 export default ManageRestaurantsPage;

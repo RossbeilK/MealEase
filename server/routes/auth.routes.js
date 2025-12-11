@@ -5,7 +5,7 @@ import {
   login,
   getProfile,
   updateProfile,
-  deleteAccount
+  deleteAccount,
 } from "../controllers/auth.controller.js";
 import auth from "../middleware/auth.js";
 

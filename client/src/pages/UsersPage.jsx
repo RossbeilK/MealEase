@@ -51,9 +51,7 @@ const UsersPage = () => {
   const handleRoleChange = async (id, newRole) => {
     try {
       const res = await api.put(`/api/users/${id}`, { role: newRole });
-      setUsers((prev) =>
-        prev.map((u) => (u._id === id ? res.data : u))
-      );
+      setUsers((prev) => prev.map((u) => (u._id === id ? res.data : u)));
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Failed to update role.");

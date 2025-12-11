@@ -1,7 +1,12 @@
 // src/components/RestaurantDetail.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import api from "../api";
+import api, { API_BASE_URL } from "../api";
+const resolveImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
+};
 
 const RestaurantDetail = () => {
   const { id } = useParams();
@@ -133,13 +138,26 @@ const RestaurantDetail = () => {
         <div className="menu-list">
           {menuItems.map((item) => (
             <div key={item._id} className="menu-item-row">
+              {item.imageUrl && (
+                <div className="menu-item-image-wrapper">
+                  <img
+                    src={resolveImageUrl(item.imageUrl)}
+                    alt={item.name}
+                    className="menu-item-image"
+                    onError={(e) => {
+                      // 如果图片加载失败，则隐藏图片，避免破坏布局
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
               <div className="menu-item-main">
                 <div className="menu-item-name">{item.name}</div>
                 {item.description && (
                   <div className="menu-item-desc">{item.description}</div>
                 )}
               </div>
-              <div>
+              <div className="menu-item-actions">
                 <div className="menu-item-price">
                   ${item.price?.toFixed(2)}
                 </div>

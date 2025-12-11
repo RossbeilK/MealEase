@@ -148,12 +148,31 @@ textarea:focus {
   gap: 0.75rem;
 }
 
+/* --- Menu item row hover effect --- */
 .menu-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
+  transition: background 0.2s ease, transform 0.15s ease;
+  border-radius: 0.75rem;
 }
+
+.menu-item-row:hover {
+  background: #fff7f0;        /* 微微变成浅橙色背景 */
+  transform: translateX(4px); /* 轻轻往右滑一点 */
+}
+/* Add 按钮轻微缩放动画 */
+.menu-item-row .button-primary {
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+
+.menu-item-row .button-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.menu-item-row .button-primary:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
 
 .menu-item-main {
   flex: 1;
@@ -248,4 +267,134 @@ footer {
   font-size: 0.8rem;
   color: #888;
   text-align: center;
+}
+
+/* 图片样式：菜单列表里的食物图片 */
+/* --- Menu item image hover grow --- */
+.menu-item-image-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+/* 鼠标放上去，整个图片框从 64×64 变成 96×96 */
+.menu-item-image-wrapper:hover {
+  width: 124px;
+  height: 124px;
+}
+
+.menu-item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+
+
+.menu-item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* Admin 管理页面布局 */
+.admin-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .admin-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.admin-panel {
+  flex: 1;
+}
+
+.admin-panel + .admin-panel {
+  border-left: 1px solid #eee;
+  padding-left: 1.5rem;
+}
+
+.admin-panel h2 {
+  font-size: 1.1rem;
+  margin-top: 0;
+}
+
+/* 表格样式：餐厅 & 菜单列表 */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid #eee;
+  padding: 0.4rem 0.3rem;
+  text-align: left;
+}
+
+.data-table th {
+  font-weight: 600;
+  color: #555;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.badge-muted {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: #e0e0e0;
+  color: #555;
+}
+
+/* Restaurant card images on Home page */
+.restaurant-card-image-wrapper {
+  width: 100%;
+  height: 160px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  background: #f0f0f0;
+  transition: transform 0.25s ease-out;
+}
+
+/* 鼠标放到餐厅图片上时，整块图片稍微放大一点 */
+.restaurant-card-image-wrapper:hover {
+  transform: scale(1.08);
+}
+
+.restaurant-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Home restaurant cards hover 效果 */
+.restaurant-grid .card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.restaurant-grid .card:hover {
+  background: #fff7f0;               /* 卡片变成淡橙色 */
+  transform: translateY(-4px);        /* 稍微往上浮一点 */
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
 }

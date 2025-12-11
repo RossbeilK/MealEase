@@ -6,10 +6,10 @@ import HomePage from "./pages/HomePage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import MyOrdersPage from "./pages/MyOrdersPage.jsx";
-import RestaurantDetail from "./components/RestaurantDetail.jsx";
-import MyProfilePage from "./pages/MyProfilePage.jsx";
 import ManageRestaurantsPage from "./pages/ManageRestaurantsPage.jsx";
+import MyProfilePage from "./pages/MyProfilePage.jsx";
 import UsersPage from "./pages/UsersPage.jsx";
+import RestaurantDetail from "./components/RestaurantDetail.jsx";
 
 const App = () => {
   return (
@@ -22,10 +22,8 @@ const App = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/orders" element={<MyOrdersPage />} />
           <Route path="/profile" element={<MyProfilePage />} />
-
           <Route path="/admin/restaurants" element={<ManageRestaurantsPage />} />
           <Route path="/admin/users" element={<UsersPage />} />
-
           <Route path="/restaurants/:id" element={<RestaurantDetail />} />
         </Routes>
       </main>

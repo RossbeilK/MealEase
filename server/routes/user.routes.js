@@ -4,7 +4,7 @@ import {
   getUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
 } from "../controllers/user.controller.js";
 import auth, { requireAdmin } from "../middleware/auth.js";
 

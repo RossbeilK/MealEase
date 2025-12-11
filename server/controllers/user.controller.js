@@ -41,7 +41,7 @@ export const updateUser = async (req, res) => {
     if (role) updates.role = role;
 
     const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, {
-      new: true
+      new: true,
     }).select("-passwordHash");
 
     if (!updatedUser) {

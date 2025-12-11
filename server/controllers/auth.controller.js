@@ -10,7 +10,9 @@ export const register = async (req, res) => {
     const { name, email, password, address, phone } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "Name, email and password are required." });
+      return res
+        .status(400)
+        .json({ message: "Name, email and password are required." });
     }
 
     const existing = await User.findOne({ email });
@@ -20,19 +22,22 @@ export const register = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // If this is the first user, you *could* make them admin.
+    // Here we keep it simple: default role = "customer".
     const user = await User.create({
       name,
       email,
       passwordHash,
       address,
-      phone
+      phone,
+      role: "customer",
     });
 
     const payload = {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
     };
 
     const token = jwt.sign(payload, config.jwtSecret, { expiresIn: "7d" });
@@ -40,7 +45,7 @@ export const register = async (req, res) => {
     return res.status(201).json({
       message: "Registration successful.",
       token,
-      user: payload
+      user: payload,
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -67,14 +72,14 @@ export const login = async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
     };
 
     const token = jwt.sign(payload, config.jwtSecret, { expiresIn: "7d" });
 
     return res.json({
       token,
-      user: payload
+      user: payload,
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -111,7 +116,7 @@ export const updateProfile = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(req.user.id, updates, {
-      new: true
+      new: true,
     }).select("-passwordHash");
 
     if (!updatedUser) {
